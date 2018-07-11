@@ -10,15 +10,6 @@ func newIntegerFromString(s string) (*big.Int, bool) {
 	return new(big.Int).SetString(s, 0)
 }
 
-func newIntegerWithDecimal(n int64, dec int) (res *big.Int) {
-	if dec < 0 {
-		return
-	}
-	exp := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil)
-	i := new(big.Int)
-	return i.Mul(big.NewInt(n), exp)
-}
-
 func equal(i *big.Int, i2 *big.Int) bool { return i.Cmp(i2) == 0 }
 
 func gt(i *big.Int, i2 *big.Int) bool { return i.Cmp(i2) == 1 }
@@ -118,7 +109,13 @@ func NewIntFromString(s string) (res Int, ok bool) {
 // NewIntWithDecimal constructs Int with decimal
 // Result value is n*10^dec
 func NewIntWithDecimal(n int64, dec int) Int {
-	i := newIntegerWithDecimal(n, dec)
+	if dec < 0 {
+		panic("NewIntWithDecimal() decimal is negative")
+	}
+	exp := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil)
+	i := new(big.Int)
+	i.Mul(big.NewInt(n), exp)
+
 	// Check overflow
 	if i.BitLen() > 255 {
 		panic("NewIntWithDecimal() out of bound")
@@ -239,6 +236,7 @@ func MinInt(i1, i2 Int) Int {
 	return Int{min(i1.BigInt(), i2.BigInt())}
 }
 
+// Human readable string
 func (i Int) String() string {
 	return i.i.String()
 }
@@ -319,8 +317,14 @@ func NewUintFromString(s string) (res Uint, ok bool) {
 
 // NewUintWithDecimal constructs Uint with decimal
 // Result value is n*10^dec
-func NewUintWithDecimal(n int64, dec int) Uint {
-	i := newIntegerWithDecimal(n, dec)
+func NewUintWithDecimal(n uint64, dec int) Uint {
+	if dec < 0 {
+		panic("NewUintWithDecimal() decimal is negative")
+	}
+	exp := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil)
+	i := new(big.Int)
+	i.Mul(new(big.Int).SetUint64(n), exp)
+
 	// Check overflow
 	if i.Sign() == -1 || i.Sign() == 1 && i.BitLen() > 256 {
 		panic("NewUintWithDecimal() out of bound")
@@ -434,6 +438,11 @@ func (i Uint) DivRaw(i2 uint64) Uint {
 // Return the minimum of the Uints
 func MinUint(i1, i2 Uint) Uint {
 	return Uint{min(i1.BigInt(), i2.BigInt())}
+}
+
+// Human readable string
+func (i Uint) String() string {
+	return i.i.String()
 }
 
 // MarshalAmino defines custom encoding scheme

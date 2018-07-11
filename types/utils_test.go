@@ -31,9 +31,15 @@ func TestSortJSON(t *testing.T) {
 
 	for _, tc := range cases {
 		got, err := SortJSON([]byte(tc.unsortedJSON))
-		if tc.wantErr != (err != nil) {
-			t.Fatalf("got %t, want: %t, err=%s", err != nil, tc.wantErr, err)
+		if tc.wantErr {
+			require.NotNil(t, err)
+			require.Panics(t, func() { MustSortJSON([]byte(tc.unsortedJSON)) })
+		} else {
+			require.Nil(t, err)
+			require.NotPanics(t, func() { MustSortJSON([]byte(tc.unsortedJSON)) })
+			require.Equal(t, got, MustSortJSON([]byte(tc.unsortedJSON)))
 		}
+
 		require.Equal(t, string(got), tc.want)
 	}
 }
