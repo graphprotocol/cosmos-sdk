@@ -409,20 +409,27 @@ func TestEncodingTableInt(t *testing.T) {
 
 	cases := []struct {
 		i   Int
-		str []byte
+		bz  []byte
+		str string
 	}{
-		{NewInt(0), []byte("\"0\"")},
-		{NewInt(100), []byte("\"100\"")},
-		{NewInt(51842), []byte("\"51842\"")},
-		{NewInt(19513368), []byte("\"19513368\"")},
-		{NewInt(999999999999), []byte("\"999999999999\"")},
+		{NewInt(0), []byte("\"0\""), "0"},
+		{NewInt(100), []byte("\"100\""), "100"},
+		{NewInt(51842), []byte("\"51842\""), "51842"},
+		{NewInt(19513368), []byte("\"19513368\""), "19513368"},
+		{NewInt(999999999999), []byte("\"999999999999\""), "999999999999"},
 	}
 
 	for _, tc := range cases {
-		str, err := tc.i.MarshalJSON()
+		bz, err := tc.i.MarshalJSON()
+		require.Nil(t, err)
+		require.Equal(t, tc.bz, bz)
+		require.Nil(t, (&i).UnmarshalJSON(bz))
+		require.Equal(t, tc.i, i)
+
+		str, err := tc.i.MarshalAmino()
 		require.Nil(t, err)
 		require.Equal(t, tc.str, str)
-		require.Nil(t, (&i).UnmarshalJSON(tc.str))
+		require.Nil(t, (&i).UnmarshalAmino(str))
 		require.Equal(t, tc.i, i)
 	}
 }
@@ -432,20 +439,28 @@ func TestEncodingTableUint(t *testing.T) {
 
 	cases := []struct {
 		i   Uint
-		str []byte
+		bz  []byte
+		str string
 	}{
-		{NewUint(0), []byte("\"0\"")},
-		{NewUint(100), []byte("\"100\"")},
-		{NewUint(51842), []byte("\"51842\"")},
-		{NewUint(19513368), []byte("\"19513368\"")},
-		{NewUint(999999999999), []byte("\"999999999999\"")},
+		{NewUint(0), []byte("\"0\""), "0"},
+		{NewUint(100), []byte("\"100\""), "100"},
+		{NewUint(51842), []byte("\"51842\""), "51842"},
+		{NewUint(19513368), []byte("\"19513368\""), "19513368"},
+		{NewUint(999999999999), []byte("\"999999999999\""), "999999999999"},
 	}
 
 	for _, tc := range cases {
-		str, err := tc.i.MarshalJSON()
+		bz, err := tc.i.MarshalJSON()
+		require.Nil(t, err)
+		require.Equal(t, tc.bz, bz)
+		require.Nil(t, (&i).UnmarshalJSON(tc.bz))
+		require.Equal(t, tc.i, i)
+
+		str, err := tc.i.MarshalAmino()
 		require.Nil(t, err)
 		require.Equal(t, tc.str, str)
-		require.Nil(t, (&i).UnmarshalJSON(tc.str))
+		require.Nil(t, (&i).UnmarshalAmino(str))
 		require.Equal(t, tc.i, i)
+
 	}
 }
