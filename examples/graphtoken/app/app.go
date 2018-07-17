@@ -30,15 +30,14 @@ type GraphTokenApp struct {
 	cdc *wire.Codec
 
 	// keys to access the multistore
-	keyMain    *sdk.KVStoreKey
-	keyAccount *sdk.KVStoreKey
-	keyIBC     *sdk.KVStoreKey
+	keyMain *sdk.KVStoreKey
+	// keyAccount *sdk.KVStoreKey
+	//ADD KEY HERE
 
 	// manage getting and setting accounts
-	accountMapper       auth.AccountMapper
-	feeCollectionKeeper auth.FeeCollectionKeeper
-	coinKeeper          bank.Keeper
-	ibcMapper           ibc.Mapper
+	// accountMapper       auth.AccountMapper
+	// feeCollectionKeeper auth.FeeCollectionKeeper
+	// coinKeeper          bank.Keeper
 }
 
 // NewGraphTokenApp returns a reference to a new GraphTokenApp given a logger and
@@ -52,35 +51,35 @@ func NewGraphTokenApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam.
 
 	// create your application type
 	var app = &GraphTokenApp{
-		cdc:        cdc,
-		BaseApp:    bam.NewBaseApp(appName, cdc, logger, db, baseAppOptions...),
-		keyMain:    sdk.NewKVStoreKey("main"),
-		keyAccount: sdk.NewKVStoreKey("acc"),
-		keyIBC:     sdk.NewKVStoreKey("ibc"),
+		cdc:     cdc,
+		BaseApp: bam.NewBaseApp(appName, cdc, logger, db, baseAppOptions...),
+		keyMain: sdk.NewKVStoreKey("main"),
+		// keyAccount: sdk.NewKVStoreKey("acc"),
+		//ADD KEY HERE
 	}
 
 	// define and attach the mappers and keepers
-	app.accountMapper = auth.NewAccountMapper(
-		cdc,
-		app.keyAccount,        // target store
-		auth.ProtoBaseAccount, // prototype
-	)
-	app.coinKeeper = bank.NewKeeper(app.accountMapper)
-	app.ibcMapper = ibc.NewMapper(app.cdc, app.keyIBC, app.RegisterCodespace(ibc.DefaultCodespace))
+	// app.accountMapper = auth.NewAccountMapper(
+	// 	cdc,
+	// 	app.keyAccount,        // target store
+	// 	auth.ProtoBaseAccount, // prototype
+	// )
+	// app.coinKeeper = bank.NewKeeper(app.accountMapper)
+	//ADD A HANDLER
 
 	// register message routes
 	app.Router().
 		AddRoute("bank", bank.NewHandler(app.coinKeeper)).
-		AddRoute("ibc", ibc.NewHandler(app.ibcMapper, app.coinKeeper))
+		//ADD ROUTE (none was added for fee keeper)
 
-	// perform initialization logic
-	app.SetInitChainer(app.initChainer)
+		// perform initialization logic
+		app.SetInitChainer(app.initChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
 	app.SetEndBlocker(app.EndBlocker)
 	app.SetAnteHandler(auth.NewAnteHandler(app.accountMapper, app.feeCollectionKeeper))
 
 	// mount the multistore and load the latest state
-	app.MountStoresIAVL(app.keyMain, app.keyAccount, app.keyIBC)
+	app.MountStoresIAVL(app.keyMain, app.keyAccount, app.keyIBC) //ADD THE KEY HERE
 	err := app.LoadLatestVersion(app.keyMain)
 	if err != nil {
 		cmn.Exit(err.Error())
