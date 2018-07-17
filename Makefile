@@ -59,6 +59,8 @@ install_examples:
 	go install $(BUILD_FLAGS) ./examples/basecoin/cmd/basecli
 	go install $(BUILD_FLAGS) ./examples/democoin/cmd/democoind
 	go install $(BUILD_FLAGS) ./examples/democoin/cmd/democli
+	go install $(BUILD_FLAGS) ./examples/graphtoken/cmd/graphcli
+	go install $(BUILD_FLAGS) ./examples/graphtoken/cmd/graphdaemon
 
 install_debug:
 	go install $(BUILD_FLAGS) ./cmd/gaia/cmd/gaiadebug
