@@ -6,9 +6,8 @@ import (
 
 // Register concrete types on wire codec for default AppAccount
 func RegisterWire(cdc *wire.Codec) {
-	cdc.RegisterInterface((*Account)(nil), nil)
-	cdc.RegisterConcrete(&BaseAccount{}, "auth/Account", nil)
-	cdc.RegisterConcrete(StdTx{}, "auth/StdTx", nil)
+	cdc.RegisterInterface((*GCI)(nil), nil)
+	cdc.RegisterConcrete(&GraphEvent{}, "graphpoc/GCI", nil)
 }
 
 var msgCdc = wire.NewCodec()

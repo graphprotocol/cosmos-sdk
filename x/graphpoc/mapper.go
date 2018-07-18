@@ -7,7 +7,7 @@ import (
 
 var globalCounter = []byte("globalCounter")
 
-// This CounterMapper encodes/decodes accounts using the
+// This CounterMapper encodes/decodes events using the
 // go-amino (binary) encoding/decoding library.
 type CounterMapper struct {
 
@@ -32,27 +32,23 @@ func NewCounterMapper(cdc *wire.Codec, key sdk.StoreKey, proto func() GCI) Count
 	}
 }
 
-func (cm CounterMapper) NewCounterWithName(ctx sdk.Context, name string) GCI {
-	counter := cm.proto()
-	err := acc.SetNodeName(name)
+func (cm CounterMapper) NewEventWithName(ctx sdk.Context, name string) GCI {
+	event := cm.proto()
+	err := event.SetEventName(name)
 	if err != nil {
 		panic(err)
 	}
-	err = acc.SetGlobalCounter(am.GetNextAccountNumber(ctx))
-	if err != nil {
-		// Handle w/ #870
-		panic(err)
-	}
-	return counter
+	cm.GetNextGlobalEventNumber(ctx)
+	return event
 }
 
 // Turn an address to key used to get it from the account store
 func NodeNameStoreKey(name string) []byte {
-	return append([]byte("name:"), name)
+	return append([]byte("name:"), []byte(name)...)
 }
 
 // Implements sdk.AccountMapper.
-func (cm CounterMapper) GetAccount(ctx sdk.Context, name string) GCI {
+func (cm CounterMapper) GetEvent(ctx sdk.Context, name string) GCI {
 	store := ctx.KVStore(cm.key)
 	bz := store.Get(NodeNameStoreKey(name))
 	if bz == nil {
@@ -62,25 +58,24 @@ func (cm CounterMapper) GetAccount(ctx sdk.Context, name string) GCI {
 	return counter
 }
 
-// Implements sdk.AccountMapper.
-func (am AccountMapper) SetAccount(ctx sdk.Context, acc Account) {
-	addr := acc.GetAddress()
-	store := ctx.KVStore(am.key)
-	bz := am.encodeAccount(acc)
-	store.Set(AddressStoreKey(addr), bz)
+// Here we store the GraphEventcounter in our store
+func (cm CounterMapper) SetEvent(ctx sdk.Context, gc GCI) {
+	eventName := gc.GetEventName()
+	store := ctx.KVStore(cm.key)
+	bz := cm.encodeCounter(gc)
+	store.Set(NodeNameStoreKey(eventName), bz)
 }
 
-// Implements sdk.AccountMapper.
-func (am AccountMapper) IterateAccounts(ctx sdk.Context, process func(Account) (stop bool)) {
-	store := ctx.KVStore(am.key)
-	iter := sdk.KVStorePrefixIterator(store, []byte("account:"))
+func (cm CounterMapper) IterateEvents(ctx sdk.Context, process func(GCI) (stop bool)) {
+	store := ctx.KVStore(cm.key)
+	iter := sdk.KVStorePrefixIterator(store, []byte("name:"))
 	for {
 		if !iter.Valid() {
 			return
 		}
 		val := iter.Value()
-		acc := am.decodeAccount(val)
-		if process(acc) {
+		gc := cm.decodeCounter(val)
+		if process(gc) {
 			return
 		}
 		iter.Next()
@@ -88,61 +83,60 @@ func (am AccountMapper) IterateAccounts(ctx sdk.Context, process func(Account) (
 }
 
 // Returns the Sequence of the account at address
-func (am AccountMapper) GetSequence(ctx sdk.Context, addr sdk.AccAddress) (int64, sdk.Error) {
-	acc := am.GetAccount(ctx, addr)
-	if acc == nil {
-		return 0, sdk.ErrUnknownAddress(addr.String())
+func (cm CounterMapper) GetCounter(ctx sdk.Context, name string) (int64, sdk.Error) {
+	event := cm.GetEvent(ctx, name)
+	if event == nil {
+		return 0, sdk.ErrUnknownAddress(name) //TODO: make unique error
 	}
-	return acc.GetSequence(), nil
+	return event.GetEventCounter(), nil
 }
 
-func (am AccountMapper) setSequence(ctx sdk.Context, addr sdk.AccAddress, newSequence int64) sdk.Error {
-	acc := am.GetAccount(ctx, addr)
-	if acc == nil {
-		return sdk.ErrUnknownAddress(addr.String())
+func (cm CounterMapper) setCounter(ctx sdk.Context, name string, newCount int64) sdk.Error {
+	event := cm.GetEvent(ctx, name)
+	if event == nil {
+		return sdk.ErrUnknownAddress(name) //TODO: make unique error
 	}
-	err := acc.SetSequence(newSequence)
+	err := event.SetEventCounter(newCount)
 	if err != nil {
-		// Handle w/ #870
 		panic(err)
 	}
-	am.SetAccount(ctx, acc)
+	cm.SetEvent(ctx, event)
 	return nil
 }
 
 // Returns and increments the global account number counter
-func (am AccountMapper) GetNextAccountNumber(ctx sdk.Context) int64 {
-	var accNumber int64
-	store := ctx.KVStore(am.key)
-	bz := store.Get(globalAccountNumberKey)
+func (cm CounterMapper) GetNextGlobalEventNumber(ctx sdk.Context) int64 {
+	var globalEventNum int64
+	store := ctx.KVStore(cm.key)
+	bz := store.Get(globalCounter)
 	if bz == nil {
-		accNumber = 0
+		globalEventNum = 0
 	} else {
-		err := am.cdc.UnmarshalBinary(bz, &accNumber)
+		err := cm.cdc.UnmarshalBinary(bz, &globalEventNum)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	bz = am.cdc.MustMarshalBinary(accNumber + 1)
-	store.Set(globalAccountNumberKey, bz)
+	bz = cm.cdc.MustMarshalBinary(globalEventNum + 1)
+	store.Set(globalCounter, bz)
 
-	return accNumber
+	return globalEventNum
 }
 
 //----------------------------------------
 // misc.
 
-func (am AccountMapper) encodeAccount(acc Account) []byte {
-	bz, err := am.cdc.MarshalBinaryBare(acc)
+func (cm CounterMapper) encodeCounter(gc GCI) []byte {
+	bz, err := cm.cdc.MarshalBinaryBare(gc)
 	if err != nil {
 		panic(err)
 	}
 	return bz
 }
 
-func (am AccountMapper) decodeCounter(bz []byte) (acc Account) {
-	err := am.cdc.UnmarshalBinaryBare(bz, &acc)
+func (cm CounterMapper) decodeCounter(bz []byte) (gc GCI) {
+	err := cm.cdc.UnmarshalBinaryBare(bz, &gc)
 	if err != nil {
 		panic(err)
 	}

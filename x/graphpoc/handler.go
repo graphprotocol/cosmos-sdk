@@ -1,41 +1,64 @@
 package graphpoc
 
 import (
-	"reflect"
+	"encoding/json"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// NewHandler returns a handler for "bank" type messages.
-func NewHandler(k Keeper) sdk.Handler {
+//------------------------------------------------------------------
+// Handler for the message
+
+// Handle MsgSend.
+// NOTE: msg.From, msg.To, and msg.Amount were already validated
+// in ValidateBasic().
+func handleMsgEventRegister(key *sdk.KVStoreKey) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
-		switch msg := msg.(type) {
-		case MsgSend:
-			return handleMsgSend(ctx, k, msg)
-		case MsgIssue:
-			return handleMsgIssue(ctx, k, msg)
-		default:
-			errMsg := "Unrecognized bank Msg type: " + reflect.TypeOf(msg).Name()
-			return sdk.ErrUnknownRequest(errMsg).Result()
+		sendMsg, ok := msg.(MsgRegisterEvent)
+		if !ok {
+			// Create custom error message and return result
+			// Note: Using unreserved error codespace
+			return sdk.NewError(2, 1, "MsgRegisterEvent is malformed").Result()
+		}
+
+		// Load the store.
+		store := ctx.KVStore(key)
+		from := sendMsg.From
+
+		// Get sender account from the store.
+		eventBytes := store.Get(from)
+		if eventBytes == nil {
+			return sdk.NewError(2, 101, "Event is not stored").Result()
+		}
+
+		// Unmarshal the JSON account bytes.
+		var event GraphEvent
+		err := json.Unmarshal(eventBytes, &event)
+		if err != nil {
+			// InternalError
+			return sdk.ErrInternal("Error when deserializing event").Result()
+		}
+
+		event.SetEventCounter(event.Counter + 1)
+
+		// Encode sender account.
+		eventBytes, err = json.Marshal(event)
+		if err != nil {
+			return sdk.ErrInternal("Event encoding error").Result()
+		}
+
+		// Update store with updated sender account
+		store.Set(from, eventBytes)
+
+		// Return a success (Code 0).
+		// Add list of key-value pair descriptors ("tags").
+		return sdk.Result{
+			Tags: sendMsg.Tags(),
 		}
 	}
 }
 
-// Handle MsgSend.
-func handleMsgSend(ctx sdk.Context, k Keeper, msg MsgSend) sdk.Result {
-	// NOTE: totalIn == totalOut should already have been checked
-
-	tags, err := k.InputOutputCoins(ctx, msg.Inputs, msg.Outputs)
-	if err != nil {
-		return err.Result()
-	}
-
-	return sdk.Result{
-		Tags: tags,
-	}
-}
-
-// Handle MsgIssue.
-func handleMsgIssue(ctx sdk.Context, k Keeper, msg MsgIssue) sdk.Result {
-	panic("not implemented yet")
+// Returns the sdk.Tags for the message
+func (msg MsgRegisterEvent) Tags() sdk.Tags {
+	return sdk.NewTags("event", []byte(msg.From.String())).AppendTag("name", []byte(msg.EventName))
 }

@@ -1,29 +1,28 @@
 package graphpoc
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/wire"
 )
 
 // GCI is the graph-counter-interface.
 
 type GCI interface {
-	GetSequence() int64
-	SetSequence(int64) error
+	GetEventCounter() int64
+	SetEventCounter(int64) error
 
-	GetNodeName() sdk.Coins
-	SetNodeName(sdk.Coins) error
+	GetEventName() string
+	SetEventName(string) error
 }
 
 // AccountDecoder unmarshals account bytes
-type AccountDecoder func(accountBytes []byte) (Account, error)
+type CounterDecoder func(counterBytes []byte) (GCI, error)
 
 //-----------------------------------------------------------
 // BaseAccount
 
-var _ GC = (*GraphCounter)(nil) //CANT REMEMBER IF I NEED THIS
+var _ GCI = (*GraphEvent)(nil) //CANT REMEMBER IF I NEED THIS
 
-type GraphCounter struct {
+type GraphEvent struct {
 	EventName         string `json:"eventname"`
 	EventContractAddr string `json:"eventcontract"`
 	EventData         string `json:"eventdata"`
@@ -31,52 +30,52 @@ type GraphCounter struct {
 }
 
 // Prototype function for BaseAccount
-func ProtoBaseGC() GC {
-	return &GraphCounter{}
+func ProtoBaseGC() GCI {
+	return &GraphEvent{}
 }
 
-func NewNode(name string, addr string, data string) GraphCounter {
-	return GraphCounter{
+func NewEvent(name string, addr string, data string) GraphEvent {
+	return GraphEvent{
 		EventName:         name,
 		EventContractAddr: addr,
 		EventData:         data,
 	}
 }
 
-func (gc *GraphCounter) GetEventName() string {
-	return gc.NodeName
+func (gc *GraphEvent) GetEventName() string {
+	return gc.EventName
 }
 
-func (gc *GraphCounter) SetEventName(name string) error {
-	gc.NodeName = name
+func (gc *GraphEvent) SetEventName(name string) error {
+	gc.EventName = name
 	return nil
 }
 
-func (gc *GraphCounter) GetEventContractAddr() string {
-	return gc.NodeName
+func (gc *GraphEvent) GetEventContractAddr() string {
+	return gc.EventContractAddr
 }
 
-func (gc *GraphCounter) SetEventContractAddr(addr string) error {
-	gc.NodeName = name
+func (gc *GraphEvent) SetEventContractAddr(addr string) error {
+	gc.EventContractAddr = addr
 	return nil
 }
 
-func (gc *GraphCounter) GetEventData() string {
-	return gc.NodeName
+func (gc *GraphEvent) GetEventData() string {
+	return gc.EventData
 }
 
-func (gc *GraphCounter) SetEventData(name string) error {
-	gc.NodeName = name
+func (gc *GraphEvent) SetEventData(name string) error {
+	gc.EventData = name
 	return nil
 }
 
 // Implements sdk.Account.
-func (gc *GraphCounter) GetGraphCounter() int64 {
+func (gc *GraphEvent) GetEventCounter() int64 {
 	return gc.Counter
 }
 
 // Implements sdk.Account.
-func (gc *GraphCounter) SetGraphCounter(counter int64) error {
+func (gc *GraphEvent) SetEventCounter(counter int64) error {
 	gc.Counter = counter
 	return nil
 }
@@ -86,7 +85,7 @@ func (gc *GraphCounter) SetGraphCounter(counter int64) error {
 
 // Most users shouldn't use this, but this comes handy for tests.
 func RegisterBaseAccount(cdc *wire.Codec) {
-	cdc.RegisterInterface((*Account)(nil), nil)
-	cdc.RegisterConcrete(&BaseAccount{}, "cosmos-sdk/BaseAccount", nil)
+	cdc.RegisterInterface((*GCI)(nil), nil)
+	cdc.RegisterConcrete(&GraphEvent{}, "cosmos-sdk/GraphEventCounter", nil)
 	wire.RegisterCrypto(cdc)
 }
