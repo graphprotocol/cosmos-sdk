@@ -12,7 +12,7 @@ import (
 // Handle MsgSend.
 // NOTE: msg.From, msg.To, and msg.Amount were already validated
 // in ValidateBasic().
-func handleMsgEventRegister(key *sdk.KVStoreKey) sdk.Handler {
+func HandleMsgEventRegister(key *sdk.KVStoreKey) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		sendMsg, ok := msg.(MsgRegisterEvent)
 		if !ok {

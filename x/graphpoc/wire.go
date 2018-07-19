@@ -8,6 +8,8 @@ import (
 func RegisterWire(cdc *wire.Codec) {
 	cdc.RegisterInterface((*GCI)(nil), nil)
 	cdc.RegisterConcrete(&GraphEvent{}, "graphpoc/GCI", nil)
+	cdc.RegisterConcrete(MsgRegisterEvent{}, "graphpoc/MsgRegisterEvent", nil)
+
 }
 
 var msgCdc = wire.NewCodec()

@@ -1,20 +1,14 @@
 package app
 
 import (
-	"encoding/json"
-
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/cosmos/cosmos-sdk/examples/basecoin/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/wire"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/bank"
-	"github.com/cosmos/cosmos-sdk/x/ibc"
+	"github.com/graphprotocol/cosmos-sdk/x/graphpoc"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -30,12 +24,12 @@ type GraphTokenApp struct {
 	cdc *wire.Codec
 
 	// keys to access the multistore
-	keyMain *sdk.KVStoreKey
+	keyEvent *sdk.KVStoreKey
 	// keyAccount *sdk.KVStoreKey
 	//ADD KEY HERE
 
 	// manage getting and setting accounts
-	// accountMapper       auth.AccountMapper
+	eventMapper graphpoc.CounterMapper
 	// feeCollectionKeeper auth.FeeCollectionKeeper
 	// coinKeeper          bank.Keeper
 }
@@ -48,39 +42,37 @@ type GraphTokenApp struct {
 func NewGraphTokenApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam.BaseApp)) *GraphTokenApp {
 	// create and register app-level codec for TXs and accounts
 	cdc := MakeCodec()
+	// cdc := wire.NewCodec()
 
 	// create your application type
 	var app = &GraphTokenApp{
-		cdc:     cdc,
-		BaseApp: bam.NewBaseApp(appName, cdc, logger, db, baseAppOptions...),
-		keyMain: sdk.NewKVStoreKey("main"),
+		cdc:      cdc,
+		BaseApp:  bam.NewBaseApp(appName, cdc, logger, db, baseAppOptions...),
+		keyEvent: sdk.NewKVStoreKey("event"),
 		// keyAccount: sdk.NewKVStoreKey("acc"),
 		//ADD KEY HERE
 	}
 
 	// define and attach the mappers and keepers
-	// app.accountMapper = auth.NewAccountMapper(
-	// 	cdc,
-	// 	app.keyAccount,        // target store
-	// 	auth.ProtoBaseAccount, // prototype
-	// )
-	// app.coinKeeper = bank.NewKeeper(app.accountMapper)
-	//ADD A HANDLER
+	app.eventMapper = graphpoc.NewCounterMapper(
+		cdc,
+		app.keyEvent,         // target store
+		graphpoc.ProtoBaseGC, // prototype
+	)
 
 	// register message routes
 	app.Router().
-		AddRoute("bank", bank.NewHandler(app.coinKeeper)).
-		//ADD ROUTE (none was added for fee keeper)
+		AddRoute("event", graphpoc.HandleMsgEventRegister(app.keyEvent))
 
-		// perform initialization logic
-		app.SetInitChainer(app.initChainer)
+	// perform initialization logic
+	app.SetInitChainer(app.initChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
 	app.SetEndBlocker(app.EndBlocker)
-	app.SetAnteHandler(auth.NewAnteHandler(app.accountMapper, app.feeCollectionKeeper))
+	// app.SetAnteHandler(auth.NewAnteHandler(app.accountMapper, app.feeCollectionKeeper))
 
 	// mount the multistore and load the latest state
-	app.MountStoresIAVL(app.keyMain, app.keyAccount, app.keyIBC) //ADD THE KEY HERE
-	err := app.LoadLatestVersion(app.keyMain)
+	app.MountStoresIAVL(app.keyEvent) //ADD THE KEY HERE
+	err := app.LoadLatestVersion(app.keyEvent)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
@@ -95,14 +87,13 @@ func MakeCodec() *wire.Codec {
 
 	wire.RegisterCrypto(cdc)
 	sdk.RegisterWire(cdc)
-	bank.RegisterWire(cdc)
-	ibc.RegisterWire(cdc)
+	graphpoc.RegisterWire(cdc)
 
 	// register custom types
-	cdc.RegisterInterface((*auth.Account)(nil), nil)
-	cdc.RegisterConcrete(&types.AppAccount{}, "basecoin/Account", nil)
+	// cdc.RegisterInterface((*auth.Account)(nil), nil)
+	// cdc.RegisterConcrete(&types.AppAccount{}, "basecoin/Account", nil)
 
-	cdc.Seal()
+	// cdc.Seal()
 
 	return cdc
 }
@@ -125,25 +116,25 @@ func (app *GraphTokenApp) EndBlocker(_ sdk.Context, _ abci.RequestEndBlock) abci
 // should contain all the genesis accounts. These accounts will be added to the
 // application's account mapper.
 func (app *GraphTokenApp) initChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
-	stateJSON := req.AppStateBytes
+	// stateJSON := req.AppStateBytes
 
-	genesisState := new(types.GenesisState)
-	err := app.cdc.UnmarshalJSON(stateJSON, genesisState)
-	if err != nil {
-		// TODO: https://github.com/cosmos/cosmos-sdk/issues/468
-		panic(err)
-	}
+	// genesisState := new(types.GenesisState)
+	// err := app.cdc.UnmarshalJSON(stateJSON, genesisState)
+	// if err != nil {
+	// 	// TODO: https://github.com/cosmos/cosmos-sdk/issues/468
+	// 	panic(err)
+	// }
 
-	for _, gacc := range genesisState.Accounts {
-		acc, err := gacc.ToAppAccount()
-		if err != nil {
-			// TODO: https://github.com/cosmos/cosmos-sdk/issues/468
-			panic(err)
-		}
+	// for _, gacc := range genesisState.Accounts {
+	// 	acc, err := gacc.ToAppAccount()
+	// 	if err != nil {
+	// 		// TODO: https://github.com/cosmos/cosmos-sdk/issues/468
+	// 		panic(err)
+	// 	}
 
-		acc.AccountNumber = app.accountMapper.GetNextAccountNumber(ctx)
-		app.accountMapper.SetAccount(ctx, acc)
-	}
+	// 	acc.AccountNumber = app.accountMapper.GetNextAccountNumber(ctx)
+	// 	app.accountMapper.SetAccount(ctx, acc)
+	// }
 
 	return abci.ResponseInitChain{}
 }
@@ -151,27 +142,27 @@ func (app *GraphTokenApp) initChainer(ctx sdk.Context, req abci.RequestInitChain
 // ExportAppStateAndValidators implements custom application logic that exposes
 // various parts of the application's state and set of validators. An error is
 // returned if any step getting the state or set of validators fails.
-func (app *GraphTokenApp) ExportAppStateAndValidators() (appState json.RawMessage, validators []tmtypes.GenesisValidator, err error) {
-	ctx := app.NewContext(true, abci.Header{})
-	accounts := []*types.GenesisAccount{}
+// func (app *GraphTokenApp) ExportAppStateAndValidators() (appState json.RawMessage, validators []tmtypes.GenesisValidator, err error) {
+// 	ctx := app.NewContext(true, abci.Header{})
+// 	accounts := []*types.GenesisAccount{}
 
-	appendAccountsFn := func(acc auth.Account) bool {
-		account := &types.GenesisAccount{
-			Address: acc.GetAddress(),
-			Coins:   acc.GetCoins(),
-		}
+// 	appendAccountsFn := func(acc auth.Account) bool {
+// 		account := &types.GenesisAccount{
+// 			Address: acc.GetAddress(),
+// 			Coins:   acc.GetCoins(),
+// 		}
 
-		accounts = append(accounts, account)
-		return false
-	}
+// 		accounts = append(accounts, account)
+// 		return false
+// 	}
 
-	app.accountMapper.IterateAccounts(ctx, appendAccountsFn)
+// 	app.accountMapper.IterateAccounts(ctx, appendAccountsFn)
 
-	genState := types.GenesisState{Accounts: accounts}
-	appState, err = wire.MarshalJSONIndent(app.cdc, genState)
-	if err != nil {
-		return nil, nil, err
-	}
+// 	genState := types.GenesisState{Accounts: accounts}
+// 	appState, err = wire.MarshalJSONIndent(app.cdc, genState)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
 
-	return appState, validators, err
-}
+// 	return appState, validators, err
+// }

@@ -4,7 +4,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// Keeper manages transfers between accounts
 type Keeper struct {
 	cm CounterMapper
 }

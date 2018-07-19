@@ -15,6 +15,8 @@ import (
 	bankcmd "github.com/cosmos/cosmos-sdk/x/bank/client/cli"
 	ibccmd "github.com/cosmos/cosmos-sdk/x/ibc/client/cli"
 	stakecmd "github.com/cosmos/cosmos-sdk/x/stake/client/cli"
+	graphcmd "github.com/graphprotocol/cosmos-sdk/x/graphpoc/client/cli"
+
 	"github.com/spf13/cobra"
 	"github.com/tendermint/tendermint/libs/cli"
 )
@@ -52,6 +54,7 @@ func main() {
 			stakecmd.GetCmdQueryDelegation("stake", cdc),
 			stakecmd.GetCmdQueryDelegations("stake", cdc),
 			authcmd.GetAccountCmd("acc", cdc, types.GetAccountDecoder(cdc)),
+			graphcmd.GetEventCmd("event", cdc, graphcmd.GetEventDecoder(cdc)),
 		)...)
 
 	rootCmd.AddCommand(
@@ -63,6 +66,7 @@ func main() {
 			stakecmd.GetCmdEditValidator(cdc),
 			stakecmd.GetCmdDelegate(cdc),
 			stakecmd.GetCmdUnbond("stake", cdc),
+			graphcmd.RegisterEventCounter("event", cdc, graphcmd.GetEventDecoder(cdc)),
 		)...)
 
 	// add proxy, version and key info

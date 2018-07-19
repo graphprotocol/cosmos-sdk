@@ -43,14 +43,14 @@ func (cm CounterMapper) NewEventWithName(ctx sdk.Context, name string) GCI {
 }
 
 // Turn an address to key used to get it from the account store
-func NodeNameStoreKey(name string) []byte {
+func EventNameStoreKey(name string) []byte {
 	return append([]byte("name:"), []byte(name)...)
 }
 
 // Implements sdk.AccountMapper.
 func (cm CounterMapper) GetEvent(ctx sdk.Context, name string) GCI {
 	store := ctx.KVStore(cm.key)
-	bz := store.Get(NodeNameStoreKey(name))
+	bz := store.Get(EventNameStoreKey(name))
 	if bz == nil {
 		return nil
 	}
@@ -63,7 +63,7 @@ func (cm CounterMapper) SetEvent(ctx sdk.Context, gc GCI) {
 	eventName := gc.GetEventName()
 	store := ctx.KVStore(cm.key)
 	bz := cm.encodeCounter(gc)
-	store.Set(NodeNameStoreKey(eventName), bz)
+	store.Set(EventNameStoreKey(eventName), bz)
 }
 
 func (cm CounterMapper) IterateEvents(ctx sdk.Context, process func(GCI) (stop bool)) {
