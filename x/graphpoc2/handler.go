@@ -1,4 +1,4 @@
-package graphpoc
+package graphpoc2
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -19,7 +19,9 @@ func NewHandler(k Keeper) sdk.Handler {
 	}
 }
 
-func handleMsgEventRegister(ctx sdk.Context, msg sdk.Msg, k Keeper) sdk.Result {
+func handleMsgEventRegister(ctx sdk.Context, msg MsgRegisterEvent, k Keeper) sdk.Result {
+
+	k.RegisterEvent(ctx, msg.EventName)
 
 	return sdk.Result{}
 
@@ -31,7 +33,7 @@ func handleMsgEventRegister(ctx sdk.Context, msg sdk.Msg, k Keeper) sdk.Result {
 	// }
 
 	// // Load the store.
-	// store := ctx.KVStore("event")
+	// store := ctx.KVStore(key)
 	// from := sendMsg.From
 
 	// // Get sender account from the store.
@@ -67,6 +69,6 @@ func handleMsgEventRegister(ctx sdk.Context, msg sdk.Msg, k Keeper) sdk.Result {
 }
 
 // Returns the sdk.Tags for the message
-func (msg MsgRegisterEvent) Tags() sdk.Tags {
-	return sdk.NewTags("event", []byte(msg.From.String())).AppendTag("name", []byte(msg.EventName))
-}
+// func (msg MsgRegisterEvent) Tags() sdk.Tags {
+// 	return sdk.NewTags("event", []byte(msg.From.String())).AppendTag("name", []byte(msg.EventName))
+// }

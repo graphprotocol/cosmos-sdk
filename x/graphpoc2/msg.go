@@ -1,4 +1,4 @@
-package graphpoc
+package graphpoc2
 
 import (
 	"encoding/json"
@@ -10,16 +10,16 @@ const MsgType = "RegisterEvent"
 
 // msg type for registering events
 type MsgRegisterEvent struct {
-	From      sdk.AccAddress //the account sending this mesage update
-	EventName string         `json:"eventname"`
+	From      sdk.AccAddress
+	EventName string `json:"eventname"`
 	// EventContractAddr string `json:"eventcontract"`
 	// EventData         string `json:"eventdata"`
 }
 
 var _ sdk.Msg = MsgRegisterEvent{}
 
-func NewRegisterEvent(eventName string, from sdk.AccAddress) MsgRegisterEvent {
-	return MsgRegisterEvent{
+func NewRegisterEvent(eventName string, from sdk.AccAddress) *MsgRegisterEvent {
+	return &MsgRegisterEvent{
 		EventName: eventName,
 		From:      from,
 	}

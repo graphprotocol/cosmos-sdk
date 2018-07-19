@@ -63,8 +63,8 @@ install_examples:
 	go install $(BUILD_FLAGS) ./examples/graphtoken/cmd/graphdaemon
 
 install_poc:
-	go install $(BUILD_FLAGS) ./examples/graphtoken/cmd/graphcli
-	go install $(BUILD_FLAGS) ./examples/graphtoken/cmd/graphdaemon
+	go install $(BUILD_FLAGS) ./examples/graphtoken2/cmd/graphcli2
+	go install $(BUILD_FLAGS) ./examples/graphtoken2/cmd/graphdaemon2
 
 install_debug:
 	go install $(BUILD_FLAGS) ./cmd/gaia/cmd/gaiadebug
