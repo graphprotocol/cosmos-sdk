@@ -25,6 +25,9 @@ type Account interface {
 
 	GetCoins() sdk.Coins
 	SetCoins(sdk.Coins) error
+
+	GetCounter() int64
+	SetCounter(int64) error
 }
 
 // AccountDecoder unmarshals account bytes
@@ -44,6 +47,7 @@ type BaseAccount struct {
 	PubKey        crypto.PubKey  `json:"public_key"`
 	AccountNumber int64          `json:"account_number"`
 	Sequence      int64          `json:"sequence"`
+	Counter       int64          `json:"graphcounter"`
 }
 
 // Prototype function for BaseAccount
@@ -112,6 +116,17 @@ func (acc *BaseAccount) GetSequence() int64 {
 // Implements sdk.Account.
 func (acc *BaseAccount) SetSequence(seq int64) error {
 	acc.Sequence = seq
+	return nil
+}
+
+// Implements sdk.Account.
+func (acc BaseAccount) GetCounter() int64 {
+	return acc.Counter
+}
+
+// Implements sdk.Account.
+func (acc *BaseAccount) SetCounter(counter int64) error {
+	acc.Counter = counter
 	return nil
 }
 

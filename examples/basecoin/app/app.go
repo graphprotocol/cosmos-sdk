@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/examples/basecoin/types"
@@ -9,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/wire"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/bank"
+	"github.com/cosmos/cosmos-sdk/x/graph_counter"
 	"github.com/cosmos/cosmos-sdk/x/ibc"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -39,6 +41,7 @@ type BasecoinApp struct {
 	feeCollectionKeeper auth.FeeCollectionKeeper
 	coinKeeper          bank.Keeper
 	ibcMapper           ibc.Mapper
+	graphCounterKeeper  graph_counter.Keeper
 }
 
 // NewBasecoinApp returns a reference to a new BasecoinApp given a logger and
@@ -66,12 +69,14 @@ func NewBasecoinApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam.Ba
 		auth.ProtoBaseAccount, // prototype
 	)
 	app.coinKeeper = bank.NewKeeper(app.accountMapper)
+	app.graphCounterKeeper = graph_counter.NewKeeper(app.accountMapper)
 	app.ibcMapper = ibc.NewMapper(app.cdc, app.keyIBC, app.RegisterCodespace(ibc.DefaultCodespace))
 
 	// register message routes
 	app.Router().
 		AddRoute("bank", bank.NewHandler(app.coinKeeper)).
-		AddRoute("ibc", ibc.NewHandler(app.ibcMapper, app.coinKeeper))
+		AddRoute("ibc", ibc.NewHandler(app.ibcMapper, app.coinKeeper)).
+		AddRoute("counter", graph_counter.NewHandler(app.graphCounterKeeper))
 
 	// perform initialization logic
 	app.SetInitChainer(app.initChainer)
@@ -98,6 +103,7 @@ func MakeCodec() *wire.Codec {
 	sdk.RegisterWire(cdc)
 	bank.RegisterWire(cdc)
 	ibc.RegisterWire(cdc)
+	graph_counter.RegisterWire(cdc)
 
 	// register custom types
 	cdc.RegisterInterface((*auth.Account)(nil), nil)
@@ -110,7 +116,15 @@ func MakeCodec() *wire.Codec {
 
 // BeginBlocker reflects logic to run before any TXs application are processed
 // by the application.
-func (app *BasecoinApp) BeginBlocker(_ sdk.Context, _ abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *BasecoinApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	addr := "cosmosaccaddr1cmk3430ff95mjf79rwtf54erx4pxnj9fhd0zaf"
+	key, err := sdk.AccAddressFromBech32(addr)
+	if err != nil {
+		fmt.Println(err)
+	}
+	oldCounter := app.graphCounterKeeper.GetCounter(ctx, key)
+	app.graphCounterKeeper.SetCounter(ctx, key, oldCounter+1)
+
 	return abci.ResponseBeginBlock{}
 }
 
