@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/cosmos/cosmos-sdk/testutil/testdata"
@@ -16,9 +17,7 @@ const addrStr = "cosmos13c3d4wq2t22dl0dstraf8jc3f902e3fsy9n3wv"
 var addrBytes = []byte{0x8e, 0x22, 0xda, 0xb8, 0xa, 0x5a, 0x94, 0xdf, 0xbd, 0xb0, 0x58, 0xfa, 0x93, 0xcb, 0x11, 0x49, 0x5e, 0xac, 0xc5, 0x30}
 
 func (suite *KeeperTestSuite) TestGRPCQueryAccounts() {
-	var (
-		req *types.QueryAccountsRequest
-	)
+	var req *types.QueryAccountsRequest
 	_, _, first := testdata.KeyTestPubAddr()
 	_, _, second := testdata.KeyTestPubAddr()
 
@@ -74,9 +73,7 @@ func (suite *KeeperTestSuite) TestGRPCQueryAccounts() {
 }
 
 func (suite *KeeperTestSuite) TestGRPCQueryAccount() {
-	var (
-		req *types.QueryAccountRequest
-	)
+	var req *types.QueryAccountRequest
 	_, _, addr := testdata.KeyTestPubAddr()
 
 	testCases := []struct {
@@ -157,6 +154,68 @@ func (suite *KeeperTestSuite) TestGRPCQueryAccount() {
 	}
 }
 
+func (suite *KeeperTestSuite) TestGRPCQueryAccountAddressByID() {
+	var req *types.QueryAccountAddressByIDRequest
+	_, _, addr := testdata.KeyTestPubAddr()
+
+	testCases := []struct {
+		msg       string
+		malleate  func()
+		expPass   bool
+		posttests func(res *types.QueryAccountAddressByIDResponse)
+	}{
+		{
+			"invalid request",
+			func() {
+				req = &types.QueryAccountAddressByIDRequest{Id: -1}
+			},
+			false,
+			func(res *types.QueryAccountAddressByIDResponse) {},
+		},
+		{
+			"account address not found",
+			func() {
+				req = &types.QueryAccountAddressByIDRequest{Id: math.MaxInt64}
+			},
+			false,
+			func(res *types.QueryAccountAddressByIDResponse) {},
+		},
+		{
+			"valid request",
+			func() {
+				account := suite.app.AccountKeeper.NewAccountWithAddress(suite.ctx, addr)
+				suite.app.AccountKeeper.SetAccount(suite.ctx, account)
+				req = &types.QueryAccountAddressByIDRequest{Id: int64(account.GetAccountNumber())}
+			},
+			true,
+			func(res *types.QueryAccountAddressByIDResponse) {
+				suite.Require().NotNil(res.AccountAddress)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(fmt.Sprintf("Case %s", tc.msg), func() {
+			suite.SetupTest() // reset
+
+			tc.malleate()
+			ctx := sdk.WrapSDKContext(suite.ctx)
+
+			res, err := suite.queryClient.AccountAddressByID(ctx, req)
+
+			if tc.expPass {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(res)
+			} else {
+				suite.Require().Error(err)
+				suite.Require().Nil(res)
+			}
+
+			tc.posttests(res)
+		})
+	}
+}
+
 func (suite *KeeperTestSuite) TestGRPCQueryParameters() {
 	var (
 		req       *types.QueryParamsRequest
@@ -200,9 +259,7 @@ func (suite *KeeperTestSuite) TestGRPCQueryParameters() {
 }
 
 func (suite *KeeperTestSuite) TestGRPCQueryModuleAccounts() {
-	var (
-		req *types.QueryModuleAccountsRequest
-	)
+	var req *types.QueryModuleAccountsRequest
 
 	testCases := []struct {
 		msg       string
@@ -217,7 +274,7 @@ func (suite *KeeperTestSuite) TestGRPCQueryModuleAccounts() {
 			},
 			true,
 			func(res *types.QueryModuleAccountsResponse) {
-				var mintModuleExists = false
+				mintModuleExists := false
 				for _, acc := range res.Accounts {
 					var account types.AccountI
 					err := suite.app.InterfaceRegistry().UnpackAny(acc, &account)
@@ -240,7 +297,7 @@ func (suite *KeeperTestSuite) TestGRPCQueryModuleAccounts() {
 			},
 			true,
 			func(res *types.QueryModuleAccountsResponse) {
-				var mintModuleExists = false
+				mintModuleExists := false
 				for _, acc := range res.Accounts {
 					var account types.AccountI
 					err := suite.app.InterfaceRegistry().UnpackAny(acc, &account)
@@ -337,7 +394,6 @@ func (suite *KeeperTestSuite) TestAddressBytesToString() {
 				suite.Require().Error(err)
 				suite.Require().Nil(res)
 			}
-
 		})
 	}
 }
@@ -384,7 +440,6 @@ func (suite *KeeperTestSuite) TestAddressStringToBytes() {
 				suite.Require().Error(err)
 				suite.Require().Nil(res)
 			}
-
 		})
 	}
 }

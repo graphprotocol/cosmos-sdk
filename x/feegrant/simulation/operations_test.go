@@ -32,7 +32,6 @@ func (suite *SimTestSuite) SetupTest() {
 	suite.ctx = app.BaseApp.NewContext(checkTx, tmproto.Header{
 		Time: time.Now(),
 	})
-
 }
 
 func (suite *SimTestSuite) getTestingAccounts(r *rand.Rand, n int) []simtypes.Account {
@@ -86,7 +85,9 @@ func (suite *SimTestSuite) TestWeightedOperations() {
 	}
 
 	for i, w := range weightedOps {
-		operationMsg, _, _ := w.Op()(r, app.BaseApp, ctx, accs, ctx.ChainID())
+		operationMsg, _, err := w.Op()(r, app.BaseApp, ctx, accs, ctx.ChainID())
+		require.NoError(err)
+
 		// the following checks are very much dependent from the ordering of the output given
 		// by WeightedOperations. if the ordering in WeightedOperations changes some tests
 		// will fail
