@@ -8,6 +8,8 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -24,12 +26,12 @@ import (
 // Although the ABCI interface (and this manager) passes chunks as byte slices, the internal
 // snapshot/restore APIs use IO streams (i.e. chan io.ReadCloser), for two reasons:
 //
-// 1) In the future, ABCI should support streaming. Consider e.g. InitChain during chain
-//    upgrades, which currently passes the entire chain state as an in-memory byte slice.
-//    https://github.com/tendermint/tendermint/issues/5184
+//  1. In the future, ABCI should support streaming. Consider e.g. InitChain during chain
+//     upgrades, which currently passes the entire chain state as an in-memory byte slice.
+//     https://github.com/tendermint/tendermint/issues/5184
 //
-// 2) io.ReadCloser streams automatically propagate IO errors, and can pass arbitrary
-//    errors via io.Pipe.CloseWithError().
+//  2. io.ReadCloser streams automatically propagate IO errors, and can pass arbitrary
+//     errors via io.Pipe.CloseWithError().
 type Manager struct {
 	// store is the snapshot store where all completed snapshots are persisted.
 	store *Store
@@ -453,6 +455,53 @@ func (m *Manager) snapshot(height int64) {
 
 		m.logger.Debug("pruned state snapshots", "pruned", pruned)
 	}
+	if err := m.exportSnapshot(snapshot); err != nil {
+		m.logger.Error("snapshot export failed", "height", height, "error", err)
+	}
+}
+
+func (m *Manager) exportSnapshot(snapshot *types.Snapshot) error {
+	snapshotsDir := os.Getenv("SNAPSHOT_EXPORT_DIR")
+	if snapshotsDir == "" {
+		return errors.New("SNAPSHOT_EXPORT_DIR env var is not set, not exporting the snapshot")
+	}
+
+	baseDir := fmt.Sprintf("%s/%d", snapshotsDir, snapshot.Height)
+	snapshotPath := fmt.Sprintf("%s/snapshot", baseDir)
+	chunkPath := filepath.Join(baseDir, "%d.chunk")
+
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return err
+	}
+
+	abciSnap, err := snapshot.ToABCI()
+	if err != nil {
+		return err
+	}
+
+	data, err := abciSnap.Marshal()
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(snapshotPath, data, 0666); err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < snapshot.Chunks; i++ {
+		m.logger.Info("exporting snapshot chunk", "height", snapshot.Height, "chunk", i)
+
+		chunkData, err := m.LoadChunk(snapshot.Height, snapshot.Format, i)
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(fmt.Sprintf(chunkPath, i), chunkData, 0666); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // IsFormatSupported returns if the snapshotter supports restoration from given format.
